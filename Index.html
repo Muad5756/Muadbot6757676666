@@ -188,6 +188,16 @@
                                 grades[studentNum] = grade;
                             }
                         }
+                    } else if (trimmed && /^\d+\s+[A-Z]+$/.test(trimmed)) {
+                        // Handle format like "33039 AA" (space separated)
+                        const parts = trimmed.split(/\s+/);
+                        if (parts.length >= 2) {
+                            const studentNum = parts[0].trim();
+                            const grade = parts[1].trim();
+                            if (studentNum && grade) {
+                                grades[studentNum] = grade;
+                            }
+                        }
                     }
                 });
                 
@@ -345,6 +355,12 @@
                 return;
             }
             
+            // Privacy protection for specific student
+            if (studentNumber === '33039') {
+                alert('This student has requested privacy protection and their grades cannot be displayed.');
+                return;
+            }
+            
             // Show loading
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('results').classList.add('hidden');
@@ -353,10 +369,12 @@
             try {
                 const sem1Grades = {};
                 const sem2Grades = {};
+                let debugInfo = [];
                 
                 // Fetch grades for semester 1
                 for (const subject of sem1) {
                     const gradeInfo = await getStudentGrade(subject.name, studentNumber);
+                    debugInfo.push(`${subject.name}: ${gradeInfo.grade || 'Not Found'} (${gradeInfo.system || 'N/A'})`);
                     if (gradeInfo.grade) {
                         sem1Grades[subject.name] = gradeInfo;
                     }
@@ -365,14 +383,17 @@
                 // Fetch grades for semester 2
                 for (const subject of sem2) {
                     const gradeInfo = await getStudentGrade(subject.name, studentNumber);
+                    debugInfo.push(`${subject.name}: ${gradeInfo.grade || 'Not Found'}`);
                     if (gradeInfo.grade) {
                         sem2Grades[subject.name] = gradeInfo;
                     }
                 }
                 
+                console.log('Debug info for student', studentNumber, ':', debugInfo);
+                
                 // Check if any grades were found
                 if (Object.keys(sem1Grades).length === 0 && Object.keys(sem2Grades).length === 0) {
-                    showError(`No grades found for student number: ${studentNumber}. Please check if your student number is correct.`);
+                    showError(`No grades found for student number: ${studentNumber}. Please check if your student number is correct.\n\nDebug info:\n${debugInfo.join('\n')}`);
                     return;
                 }
                 
@@ -381,7 +402,7 @@
                 document.getElementById('results').classList.remove('hidden');
                 
             } catch (error) {
-                showError('Error calculating GPA. Please try again.');
+                showError(`Error calculating GPA: ${error.message}. Please try again.`);
                 console.error('Error:', error);
             } finally {
                 document.getElementById('loading').classList.add('hidden');
@@ -402,5 +423,5 @@
             }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9709475801a8b092',t:'MTc1NTQzNDgzMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9709d754b701ee8f',t:'MTc1NTQ0MDczMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
