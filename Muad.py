@@ -1,116 +1,184 @@
-import telebot
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPA Calculator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-# Bot credentials
-BOT_TOKEN = "7830885491:AAGO9u-cTPje1_a6vXXMANehxlMPYEx0BG4"
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-# Default Group Chat ID (negative integer)
-GROUP_CHAT_ID = -4726292517
+    .container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
 
-# Authorized User ID (admin)
-AUTHORIZED_USER_ID = 5457132722
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
 
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
+    input {
+      padding: 10px;
+      width: 80%;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
 
-# Control variables
-group_change_mode = False
-sbot_mode = False
-sbot_message = None
+    button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
 
-@bot.message_handler(content_types=['text', 'photo', 'video', 'sticker', 'document'])
-def handle_messages(message):
-    global GROUP_CHAT_ID, group_change_mode, sbot_mode, sbot_message
+    button:hover {
+      background-color: #45a049;
+    }
 
-    # For the authorized user (admin)
-    if message.from_user.id == AUTHORIZED_USER_ID:
-        # If we are in group ID change mode, expect a new Group ID
-        if group_change_mode:
-            try:
-                new_group_id = int(message.text.strip())
-                if new_group_id < 0:
-                    GROUP_CHAT_ID = new_group_id
-                    group_change_mode = False
-                    bot.send_message(AUTHORIZED_USER_ID, f"✅ Group ID changed to: {GROUP_CHAT_ID}")
-                else:
-                    bot.send_message(AUTHORIZED_USER_ID, "❌ Group ID must be a negative integer.")
-            except (ValueError, AttributeError):
-                bot.send_message(AUTHORIZED_USER_ID, "❌ Please send a valid group ID (negative integer).")
-            return
+    .result {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GPA Calculator</h1>
+    <p>Enter your study number to calculate your GPA:</p>
+    <input type="number" id="studyNumber" placeholder="Enter your study number" required />
+    <button id="calculateBtn">Calculate GPA</button>
 
-        # SBOT mode (repeat a message)
-        if sbot_mode:
-            if not sbot_message:
-                # The first message in SBOT mode is the message to be repeated
-                sbot_message = message.text
-                bot.send_message(AUTHORIZED_USER_ID, "✅ How many times do you want to repeat this message?")
-            else:
-                try:
-                    repeat_count = int(message.text.strip())
-                    if repeat_count > 0:
-                        for _ in range(repeat_count):
-                            bot.send_message(GROUP_CHAT_ID, sbot_message)
-                        bot.send_message(AUTHORIZED_USER_ID, f"✅ Message sent {repeat_count} times.")
-                    else:
-                        bot.send_message(AUTHORIZED_USER_ID, "❌ The number must be greater than 0.")
-                except ValueError:
-                    bot.send_message(AUTHORIZED_USER_ID, "❌ Please send a valid number.")
-                sbot_mode = False
-                sbot_message = None
-            return
+    <div id="result" class="result"></div>
+  </div>
 
-        # Process admin commands
-        if message.text:
-            if message.text.strip().lower() == "id":
-                # Do not forward "id" to the group; instead, ask for a new Group ID
-                group_change_mode = True
-                bot.send_message(AUTHORIZED_USER_ID, "🔄 Please send the new Group ID (negative integer).")
-                return
-            elif message.text.strip().lower() == "sbot":
-                sbot_mode = True
-                bot.send_message(AUTHORIZED_USER_ID, "✏️ Please send the message you want to repeat.")
-                return
-            else:
-                # Forward any other text messages to the current group
-                bot.send_message(GROUP_CHAT_ID, message.text)
-        elif message.photo:
-            bot.send_photo(GROUP_CHAT_ID, message.photo[-1].file_id)
-        elif message.video:
-            bot.send_video(GROUP_CHAT_ID, message.video.file_id)
-        elif message.sticker:
-            bot.send_sticker(GROUP_CHAT_ID, message.sticker.file_id)
-        elif message.document:
-            bot.send_document(GROUP_CHAT_ID, message.document.file_id)
+  <script>
+    const gradeToGPA = {
+      F: 0,
+      D: 0.5,
+      DD: 1,
+      C: 1.5,
+      CC: 2,
+      B: 2.5,
+      BB: 3,
+      A: 3.5,
+      AA: 4,
+    };
 
-    # For unauthorized users
-    else:
-        # Do not forward messages that come from the group chat
-        if message.chat.id == GROUP_CHAT_ID:
-            return
+    const sem1 = [
+      { name: "Math1", units: 12 },
+      { name: "Physics1", units: 12 },
+      { name: "English1", units: 9 },
+      { name: "Statistics", units: 9 },
+      { name: "Arabic", units: 6 },
+      { name: "Computer", units: 9 },
+    ];
 
-        sender_name = message.from_user.first_name or "Unknown"
-        sender_id = message.from_user.id
+    const sem2 = [
+      { name: "Math2", units: 12 },
+      { name: "Physics2", units: 12 },
+      { name: "Chemistry", units: 9 },
+      { name: "Drawing", units: 6 },
+      { name: "English2", units: 9 },
+    ];
 
-        if message.text:
-            bot.send_message(
-                AUTHORIZED_USER_ID,
-                f"📩 New message from:\nName: {sender_name}\nID: {sender_id}\nContent: {message.text}"
-            )
-            bot.send_message(message.chat.id, "✅ Your message has been forwarded to the admin.")
-        else:
-            # Forward media (photo, video, sticker, document) to the admin
-            bot.send_message(
-                AUTHORIZED_USER_ID,
-                f"📩 New media received from:\nName: {sender_name}\nID: {sender_id}"
-            )
-            if message.photo:
-                bot.send_photo(AUTHORIZED_USER_ID, message.photo[-1].file_id)
-            elif message.video:
-                bot.send_video(AUTHORIZED_USER_ID, message.video.file_id)
-            elif message.sticker:
-                bot.send_sticker(AUTHORIZED_USER_ID, message.sticker.file_id)
-            elif message.document:
-                bot.send_document(AUTHORIZED_USER_ID, message.document.file_id)
+    const pastebinLinks = {
+      Math1_old: "https://pastebin.com/raw/4WscJMh0",
+      Math1_new: "https://pastebin.com/raw/xBmPwP5u",
+      Physics1_old: "https://pastebin.com/raw/VsZXLGnF",
+      Physics1_new: "https://pastebin.com/raw/XZeQHFSs",
+      English1_old: "https://pastebin.com/raw/AxmBtNeE",
+      English1_new: "https://pastebin.com/raw/ZZsjVX30",
+      Statistics_old: "https://pastebin.com/raw/DY08wqAx",
+      Statistics_new: "https://pastebin.com/raw/2WeYNGM2",
+      Arabic_old: "https://pastebin.com/raw/pUdtTdDC",
+      Arabic_new: "https://pastebin.com/raw/S5R0pKKn",
+      Computer_old: "https://pastebin.com/raw/xM78SjCp",
+      Computer_new: "https://pastebin.com/raw/8fZNVW1s",
+      Math2: "https://pastebin.com/raw/eSiuC5ML",
+      Physics2: "https://pastebin.com/raw/e3FQwB9q",
+      Chemistry: "https://pastebin.com/raw/izG7PzL5",
+      Drawing: "https://pastebin.com/raw/QGnc3Duj",
+      English2: "https://pastebin.com/raw/yBdzjstv",
+    };
 
-            bot.send_message(message.chat.id, "✅ Your message has been forwarded to the admin.")
+    async function fetchGradeFromPastebin(url) {
+      try {
+        const response = await fetch(url);
+        return response.text();
+      } catch (error) {
+        console.error("Error fetching from Pastebin:", error);
+        return null;
+      }
+    }
 
-print("Bot is running...")
-bot.infinity_polling()
+    function calculateSubjectGPA(subject, grade) {
+      const gpa = gradeToGPA[grade];
+      return gpa * subject.units;
+    }
+
+    async function calculateGPA(studyNumber) {
+      let totalUnits = 0;
+      let totalGPA = 0;
+
+      for (const subject of sem1) {
+        const gradeOld = await fetchGradeFromPastebin(pastebinLinks[`${subject.name}_old`]);
+        const gradeNew = await fetchGradeFromPastebin(pastebinLinks[`${subject.name}_new`]);
+
+        let grade = gradeOld;
+        if (gradeNew && gradeNew !== 'F') {
+          grade = gradeNew;
+        }
+
+        const subjectGPA = calculateSubjectGPA(subject, grade);
+        totalUnits += subject.units;
+        totalGPA += subjectGPA;
+      }
+
+      for (const subject of sem2) {
+        const grade = await fetchGradeFromPastebin(pastebinLinks[subject.name]);
+        const subjectGPA = calculateSubjectGPA(subject, grade);
+        totalUnits += subject.units;
+        totalGPA += subjectGPA;
+      }
+
+      const finalGPA = totalGPA / totalUnits;
+      return finalGPA.toFixed(2);
+    }
+
+    document.getElementById("calculateBtn").addEventListener("click", async () => {
+      const studyNumber = document.getElementById("studyNumber").value;
+      if (!studyNumber) {
+        alert("Please enter your study number.");
+        return;
+      }
+
+      document.getElementById("result").innerHTML = "Calculating GPA...";
+
+      const gpa = await calculateGPA(studyNumber);
+      document.getElementById("result").innerHTML = `Your GPA is: ${gpa}`;
+    });
+  </script>
+</body>
+</html>
