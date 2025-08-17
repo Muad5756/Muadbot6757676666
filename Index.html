@@ -3,102 +3,364 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPA Calculator</title>
+    <title>Student GPA Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>GPA Calculator</h1>
-    <input id="studyNum" type="text" placeholder="Enter your study number">
-    <button id="calcButton">Calculate GPA</button>
-    <div id="result"></div>
+<body class="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white mb-2">Student GPA Calculator</h1>
+                <p class="text-blue-200">Enter your student number to calculate your GPA</p>
+            </div>
+
+            <!-- Info Section -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Automatic Grade Loading</h2>
+                <p class="text-blue-200 mb-4">This system automatically fetches your grades from DB online when you calculate your GPA. No manual data entry required!</p>
+                <div class="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4">
+                    <p class="text-blue-100 text-sm">
+                        <strong>How it works:</strong> Enter your student number below and click "Calculate GPA". 
+                        The system will automatically load all grade data from the online database and calculate your results.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Student Number Input -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-white/20">
+                <div class="mb-6">
+                    <label for="studentNumber" class="block text-white font-semibold mb-3">Student Number:</label>
+                    <input 
+                        type="text" 
+                        id="studentNumber" 
+                        placeholder="Enter your student number (e.g., 32870)"
+                        class="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                    >
+                </div>
+                <button 
+                    onclick="calculateGPA()" 
+                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+                >
+                    Calculate GPA
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="hidden text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                <p class="text-white mt-4">Fetching your grades...</p>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="hidden bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-6">Your GPA Results</h2>
+                
+                <!-- Semester 1 -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-blue-200 mb-4">Semester 1</h3>
+                    <div id="sem1Results" class="space-y-3"></div>
+                    <div class="mt-4 p-4 bg-white/10 rounded-lg">
+                        <p class="text-white font-semibold">Semester 1 GPA: <span id="sem1GPA" class="text-green-300"></span></p>
+                    </div>
+                </div>
+
+                <!-- Semester 2 -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-blue-200 mb-4">Semester 2</h3>
+                    <div id="sem2Results" class="space-y-3"></div>
+                    <div class="mt-4 p-4 bg-white/10 rounded-lg">
+                        <p class="text-white font-semibold">Semester 2 GPA: <span id="sem2GPA" class="text-green-300"></span></p>
+                    </div>
+                </div>
+
+                <!-- Overall GPA -->
+                <div class="bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-lg p-6 border border-green-400/30">
+                    <h3 class="text-2xl font-bold text-white mb-2">Overall GPA</h3>
+                    <p class="text-3xl font-bold text-green-300" id="overallGPA"></p>
+                </div>
+            </div>
+
+
+
+            <!-- Error Message -->
+            <div id="error" class="hidden bg-red-500/20 border border-red-400/30 rounded-lg p-6">
+                <p class="text-red-200" id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
 
     <script>
         const gradeToGPA = {
-            F: 0,
-            D: 0.5,
-            DD: 1,
-            C: 1.5,
-            CC: 2,
-            B: 2.5,
-            BB: 3,
-            A: 3.5,
-            AA: 4
+            'F': 0, 'D': 0.5, 'DD': 1, 'C': 1.5, 'CC': 2,
+            'B': 2.5, 'BB': 3, 'A': 3.5, 'AA': 4
         };
 
-        const subjects = [
-            { name: "Math1", units: 12, urls: ["https://pastebin.com/raw/xBmPwP5u", "https://pastebin.com/raw/4WscJMh0"] }, // new first, then old
-            { name: "Physics1", units: 12, urls: ["https://pastebin.com/raw/XZeQHFSs", "https://pastebin.com/raw/VsZXLGnF"] },
-            { name: "English1", units: 9, urls: ["https://pastebin.com/raw/ZZsjVX30", "https://pastebin.com/raw/AxmBtNeE"] },
-            { name: "Statistics", units: 9, urls: ["https://pastebin.com/raw/2WeYNGM2", "https://pastebin.com/raw/DY08wqAx"] },
-            { name: "Arabic", units: 6, urls: ["https://pastebin.com/raw/S5R0pKKn", "https://pastebin.com/raw/pUdtTdDC"] },
-            { name: "Computer", units: 9, urls: ["https://pastebin.com/raw/8fZNVW1s", "https://pastebin.com/raw/xM78SjCp"] },
-            { name: "Math2", units: 12, urls: ["https://pastebin.com/raw/eSiuC5ML"] },
-            { name: "Physics2", units: 12, urls: ["https://pastebin.com/raw/e3FQwB9q"] },
-            { name: "Chemistry", units: 9, urls: ["https://pastebin.com/raw/izG7PzL5"] },
-            { name: "Drawing", units: 6, urls: ["https://pastebin.com/raw/QGnc3Duj"] },
-            { name: "English2", units: 9, urls: ["https://pastebin.com/raw/yBdzjstv"] }
+        const sem1 = [
+            { name: "Math1", units: 12 },
+            { name: "Physics1", units: 12 },
+            { name: "English1", units: 9 },
+            { name: "Statistics", units: 9 },
+            { name: "Arabic", units: 6 },
+            { name: "Computer", units: 9 }
         ];
 
-        async function getGradeForSubject(studyNum, subject) {
-            for (let url of subject.urls) {
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) continue;
-                    const text = await response.text();
-                    const lines = text.split('\n');
-                    for (let line of lines) {
-                        const parts = line.split(' : ');
-                        if (parts.length === 2) {
-                            const num = parts[0].trim();
+        const sem2 = [
+            { name: "Math2", units: 12 },
+            { name: "Physics2", units: 12 },
+            { name: "Chemistry", units: 9 },
+            { name: "Drawing", units: 6 },
+            { name: "English2", units: 9 }
+        ];
+
+        const pastebinLinks = {
+            'Math1_old': 'https://pastebin.com/raw/4WscJMh0',
+            'Math1_new': 'https://pastebin.com/raw/xBmPwP5u',
+            'Physics1_old': 'https://pastebin.com/raw/VsZXLGnF',
+            'Physics1_new': 'https://pastebin.com/raw/XZeQHFSs',
+            'English1_old': 'https://pastebin.com/raw/AxmBtNeE',
+            'English1_new': 'https://pastebin.com/raw/ZZsjVX30',
+            'Statistics_old': 'https://pastebin.com/raw/DY08wqAx',
+            'Statistics_new': 'https://pastebin.com/raw/2WeYNGM2',
+            'Arabic_old': 'https://pastebin.com/raw/pUdtTdDC',
+            'Arabic_new': 'https://pastebin.com/raw/S5R0pKKn',
+            'Computer_old': 'https://pastebin.com/raw/xM78SjCp',
+            'Computer_new': 'https://pastebin.com/raw/8fZNVW1s',
+            'Math2': 'https://pastebin.com/raw/eSiuC5ML',
+            'Physics2': 'https://pastebin.com/raw/e3FQwB9q',
+            'Chemistry': 'https://pastebin.com/raw/izG7PzL5',
+            'Drawing': 'https://pastebin.com/raw/QGnc3Duj',
+            'English2': 'https://pastebin.com/raw/yBdzjstv'
+        };
+
+
+
+        async function fetchGradeData(url) {
+            try {
+                // Try multiple CORS proxy services
+                const proxies = [
+                    'https://api.allorigins.win/raw?url=',
+                    'https://corsproxy.io/?',
+                    'https://cors-anywhere.herokuapp.com/',
+                    '' // Direct fetch as fallback
+                ];
+                
+                let response, text;
+                let lastError;
+                
+                for (const proxy of proxies) {
+                    try {
+                        const proxyUrl = proxy + encodeURIComponent(url);
+                        console.log(`Trying to fetch from: ${proxyUrl}`);
+                        
+                        response = await fetch(proxyUrl);
+                        if (response.ok) {
+                            text = await response.text();
+                            console.log(`Success with proxy: ${proxy}`);
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`Failed with proxy ${proxy}:`, error.message);
+                        lastError = error;
+                        continue;
+                    }
+                }
+                
+                if (!text) {
+                    throw lastError || new Error('All proxy attempts failed');
+                }
+                
+                const grades = {};
+                
+                // Debug: Log the raw text
+                console.log(`Data from ${url}:`, text.substring(0, 200) + '...');
+                
+                const lines = text.split('\n');
+                lines.forEach((line, index) => {
+                    const trimmed = line.trim();
+                    if (trimmed && trimmed.includes(':')) {
+                        const parts = trimmed.split(':');
+                        if (parts.length >= 2) {
+                            const studentNum = parts[0].trim();
                             const grade = parts[1].trim();
-                            if (num === studyNum) {
-                                return grade;
+                            if (studentNum && grade) {
+                                grades[studentNum] = grade;
                             }
                         }
                     }
-                } catch (error) {
-                    console.error(`Error fetching ${url}: ${error}`);
-                }
+                });
+                
+                // Debug: Log found grades
+                console.log(`Grades found in ${url}:`, Object.keys(grades).length, 'students');
+                
+                return { grades, rawText: text, url };
+            } catch (error) {
+                console.error('Error fetching data from:', url, error);
+                return { grades: {}, rawText: '', url, error: error.message };
             }
-            return null;
+        }
+
+
+
+        async function getStudentGrade(subject, studentNumber) {
+            // For semester 1 subjects, check both old and new systems
+            if (sem1.some(s => s.name === subject)) {
+                const newData = await fetchGradeData(pastebinLinks[`${subject}_new`]);
+                const oldData = await fetchGradeData(pastebinLinks[`${subject}_old`]);
+                
+                // If student exists in new system, use new grade
+                if (newData.grades[studentNumber]) {
+                    return { grade: newData.grades[studentNumber], system: 'New', data: newData };
+                }
+                // Otherwise, use old system if available
+                if (oldData.grades[studentNumber]) {
+                    return { grade: oldData.grades[studentNumber], system: 'Old', data: oldData };
+                }
+                return { grade: null, system: null, data: { newData, oldData } };
+            } else {
+                // For semester 2 subjects, only one system
+                const data = await fetchGradeData(pastebinLinks[subject]);
+                if (data.grades[studentNumber]) {
+                    return { grade: data.grades[studentNumber], system: 'Current', data };
+                }
+                return { grade: null, system: null, data };
+            }
+        }
+
+        function calculateSemesterGPA(subjects, grades) {
+            let totalPoints = 0;
+            let totalUnits = 0;
+            
+            subjects.forEach(subject => {
+                const gradeInfo = grades[subject.name];
+                if (gradeInfo && gradeToGPA[gradeInfo.grade] !== undefined) {
+                    totalPoints += gradeToGPA[gradeInfo.grade] * subject.units;
+                    totalUnits += subject.units;
+                }
+            });
+            
+            return totalUnits > 0 ? (totalPoints / totalUnits).toFixed(2) : '0.00';
+        }
+
+        function displayResults(sem1Grades, sem2Grades) {
+            const sem1Results = document.getElementById('sem1Results');
+            const sem2Results = document.getElementById('sem2Results');
+            
+            // Display Semester 1 results
+            sem1Results.innerHTML = '';
+            sem1.forEach(subject => {
+                const gradeInfo = sem1Grades[subject.name];
+                const gradeDisplay = gradeInfo ? `${gradeInfo.grade} (${gradeInfo.system})` : 'Not Found';
+                const gpaPoints = gradeInfo ? gradeToGPA[gradeInfo.grade] || 0 : 0;
+                
+                sem1Results.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                        <span class="text-white font-medium">${subject.name}</span>
+                        <div class="text-right">
+                            <span class="text-blue-200">${gradeDisplay}</span>
+                            <span class="text-gray-300 text-sm ml-2">(${gpaPoints} pts)</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Display Semester 2 results
+            sem2Results.innerHTML = '';
+            sem2.forEach(subject => {
+                const gradeInfo = sem2Grades[subject.name];
+                const gradeDisplay = gradeInfo ? gradeInfo.grade : 'Not Found';
+                const gpaPoints = gradeInfo ? gradeToGPA[gradeInfo.grade] || 0 : 0;
+                
+                sem2Results.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                        <span class="text-white font-medium">${subject.name}</span>
+                        <div class="text-right">
+                            <span class="text-blue-200">${gradeDisplay}</span>
+                            <span class="text-gray-300 text-sm ml-2">(${gpaPoints} pts)</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Calculate and display GPAs
+            const sem1GPA = calculateSemesterGPA(sem1, sem1Grades);
+            const sem2GPA = calculateSemesterGPA(sem2, sem2Grades);
+            
+            document.getElementById('sem1GPA').textContent = sem1GPA;
+            document.getElementById('sem2GPA').textContent = sem2GPA;
+            
+            // Calculate overall GPA
+            const totalSem1Units = sem1.reduce((sum, s) => sum + s.units, 0);
+            const totalSem2Units = sem2.reduce((sum, s) => sum + s.units, 0);
+            const overallGPA = ((parseFloat(sem1GPA) * totalSem1Units + parseFloat(sem2GPA) * totalSem2Units) / (totalSem1Units + totalSem2Units)).toFixed(2);
+            
+            document.getElementById('overallGPA').textContent = overallGPA;
         }
 
         async function calculateGPA() {
-            const studyNum = document.getElementById('studyNum').value.trim();
-            if (!studyNum) {
-                document.getElementById('result').innerText = 'Please enter a study number.';
+            const studentNumber = document.getElementById('studentNumber').value.trim();
+            
+            if (!studentNumber) {
+                showError('Please enter a student number');
                 return;
             }
-
-            let totalPoints = 0;
-            let totalUnits = 0;
-            let missingSubjects = [];
-
-            for (let subject of subjects) {
-                const grade = await getGradeForSubject(studyNum, subject);
-                if (grade && gradeToGPA[grade] !== undefined) {
-                    const gpaValue = gradeToGPA[grade];
-                    totalPoints += gpaValue * subject.units;
-                    totalUnits += subject.units;
-                } else {
-                    missingSubjects.push(subject.name);
+            
+            // Show loading
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+            
+            try {
+                const sem1Grades = {};
+                const sem2Grades = {};
+                
+                // Fetch grades for semester 1
+                for (const subject of sem1) {
+                    const gradeInfo = await getStudentGrade(subject.name, studentNumber);
+                    if (gradeInfo.grade) {
+                        sem1Grades[subject.name] = gradeInfo;
+                    }
                 }
+                
+                // Fetch grades for semester 2
+                for (const subject of sem2) {
+                    const gradeInfo = await getStudentGrade(subject.name, studentNumber);
+                    if (gradeInfo.grade) {
+                        sem2Grades[subject.name] = gradeInfo;
+                    }
+                }
+                
+                // Check if any grades were found
+                if (Object.keys(sem1Grades).length === 0 && Object.keys(sem2Grades).length === 0) {
+                    showError(`No grades found for student number: ${studentNumber}. Please check if your student number is correct.`);
+                    return;
+                }
+                
+                // Display results
+                displayResults(sem1Grades, sem2Grades);
+                document.getElementById('results').classList.remove('hidden');
+                
+            } catch (error) {
+                showError('Error calculating GPA. Please try again.');
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
             }
-
-            if (missingSubjects.length > 0) {
-                document.getElementById('result').innerText = `Grades not found for: ${missingSubjects.join(', ')}. Cannot calculate GPA.`;
-                return;
-            }
-
-            if (totalUnits === 0) {
-                document.getElementById('result').innerText = 'No units found. Cannot calculate GPA.';
-                return;
-            }
-
-            const gpa = totalPoints / totalUnits;
-            document.getElementById('result').innerText = `Your GPA is ${gpa.toFixed(2)}`;
         }
 
-        document.getElementById('calcButton').addEventListener('click', calculateGPA);
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+        }
+
+        // Allow Enter key to trigger calculation
+        document.getElementById('studentNumber').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateGPA();
+            }
+        });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97090900f270eef8',t:'MTc1NTQzMjI3OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
